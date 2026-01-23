@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformador Excel - Therapía IV</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #111827;
+            --bg-card: #1a2235;
+            --accent-npt: #10b981;
+            --accent-onco: #f59e0b;
+            --accent-admin: #8b5cf6;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #2d3a4f;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(ellipse at 20% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(245, 158, 11, 0.08) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+            position: relative;
+        }
+
+        .logo {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--accent-npt), var(--accent-onco));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .admin-toggle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .admin-toggle:hover {
+            border-color: var(--accent-admin);
+            color: var(--accent-admin);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
+        .type-option {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .type-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .type-card {
+            padding: 24px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .type-option input:checked + .type-card {
+            border-color: var(--accent-npt);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .type-option:last-child input:checked + .type-card {
+            border-color: var(--accent-onco);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .type-card:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .type-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        .type-name {
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        .type-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 48px 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent-npt);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .upload-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .file-info {
+            display: none;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .file-info.visible {
+            display: flex;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+        }
+
+        .file-details {
+            flex: 1;
+            text-align: left;
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .file-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-remove {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 8px;
+            transition: color 0.2s;
+        }
+
+        .btn-remove:hover {
+            color: #ef4444;
+        }
+
+        .btn-process {
+            width: 100%;
+            padding: 18px 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .btn-process.npt {
+            background: linear-gradient(135deg, var(--accent-npt), #059669);
+            color: white;
+        }
+
+        .btn-process.onco {
+            background: linear-gradient(135deg, var(--accent-onco), #d97706);
+            color: white;
+        }
+
+        .btn-process:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-process:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.visible {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .success-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-npt), #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .results-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .results-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-download {
+            width: 100%;
+            padding: 16px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: 2px solid var(--accent-npt);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            background: transparent;
+            color: var(--accent-npt);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .btn-download:hover {
+            background: var(--accent-npt);
+            color: white;
+        }
+
+        .preview-section {
+            margin-top: 24px;
+        }
+
+        .preview-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .preview-table {
+            width: 100%;
+            overflow-x: auto;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .preview-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .preview-table th {
+            background: var(--bg-card);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .preview-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 48px;
+        }
+
+        .loading.visible {
+            display: block;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-npt);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 16px;
+            color: #fca5a5;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        footer {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* ========== ADMIN PANEL STYLES ========== */
+        .admin-view {
+            display: none;
+        }
+
+        .admin-view.visible {
+            display: block;
+        }
+
+        .public-view.hidden {
+            display: none;
+        }
+
+        .login-card {
+            max-width: 400px;
+            margin: 80px auto;
+        }
+
+        .login-title {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-title h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .login-title p {
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-admin);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent-admin), #7c3aed);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .admin-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .btn-logout {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .files-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .file-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .file-card:hover {
+            border-color: var(--accent-admin);
+        }
+
+        .file-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .file-card-icon.npt {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .file-card-icon.onco {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .file-card-info {
+            flex: 1;
+        }
+
+        .file-card-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .file-card-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .file-card-date {
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .file-card-date strong {
+            display: block;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .btn-download-small {
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-download-small:hover {
+            background: var(--accent-admin);
+            border-color: var(--accent-admin);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 64px 32px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.npt {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-npt);
+        }
+
+        .badge.onco {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-onco);
+        }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            padding: 12px;
+            color: #fca5a5;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .login-error.visible {
+            display: block;
+        }
+
+        .storage-status {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .storage-status.success {
+            display: block;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-npt);
+        }
+
+        .storage-status.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+        }
+
+        /* ========== PRECIOS SECTION ========== */
+        .admin-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .admin-tab {
+            padding: 12px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .admin-tab:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .admin-tab.active {
+            background: var(--accent-admin);
+            border-color: var(--accent-admin);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .precios-upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 32px 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .precios-upload-zone:hover {
+            border-color: var(--accent-onco);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .precios-upload-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .precios-info {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .precios-info h4 {
+            margin-bottom: 8px;
+            color: var(--accent-onco);
+        }
+
+        .precios-info p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .precios-info code {
+            background: var(--bg-card);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .precios-stats {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .precios-stat {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 16px 24px;
+        }
+
+        .precios-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-onco);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .precios-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-clear-precios {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            color: var(--danger);
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-clear-precios:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .precios-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .precios-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .precios-table th,
+        .precios-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .precios-table th {
+            background: var(--bg-card);
+            font-weight: 600;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+
+        .precios-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .precios-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .precios-message.success {
+            display: block;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-npt);
+        }
+
+        .precios-message.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+        }
+
+        .price-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 12px;
+        }
+
+        .price-status-badge.loaded {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-npt);
+        }
+
+        .price-status-badge.empty {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-onco);
+        }
+
+        @media (max-width: 640px) {
+            .type-selector {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .admin-toggle {
+                position: static;
+                display: block;
+                text-align: center;
+                margin-top: 16px;
+            }
+            .file-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            .file-card-date {
+                text-align: center;
+            }
+            .admin-tabs {
+                flex-direction: column;
+            }
+            .precios-stats {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ========== PUBLIC VIEW (Transformador) ========== -->
+        <div class="public-view" id="publicView">
+            <header>
+                <div class="logo">Therapía IV</div>
+                <h1>Transformador Excel</h1>
+                <p class="subtitle">Convierte archivos NPT y Oncología al formato requerido</p>
+                <a href="#" class="admin-toggle" id="adminToggle">🔐 Admin</a>
+            </header>
+
+            <div class="card">
+                <div class="step-indicator">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Selecciona el tipo de archivo</div>
+                </div>
+                <div class="type-selector">
+                    <label class="type-option">
+                        <input type="radio" name="fileType" value="npt" checked>
+                        <div class="type-card">
+                            <div class="type-icon">💉</div>
+                            <div class="type-name">NPT</div>
+                            <div class="type-desc">Nutrición Parenteral Total</div>
+                        </div>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="fileType" value="onco">
+                        <div class="type-card">
+                            <div class="type-icon">🧬</div>
+                            <div class="type-name">ONCO</div>
+                            <div class="type-desc">Oncología / Quimioterapia</div>
+                        </div>
+                    </label>
+                </div>
+                <div id="priceStatusPublic"></div>
+            </div>
+
+            <div class="card">
+                <div class="step-indicator">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Sube tu archivo Excel</div>
+                </div>
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept=".xlsx,.xls">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Arrastra tu archivo aquí o haz clic para seleccionar</div>
+                    <div class="upload-hint">Archivos .xlsx o .xls</div>
+                </div>
+                <div class="file-info" id="fileInfo">
+                    <div class="file-icon">📊</div>
+                    <div class="file-details">
+                        <div class="file-name" id="fileName"></div>
+                        <div class="file-meta" id="fileMeta"></div>
+                    </div>
+                    <button class="btn-remove" id="btnRemove" title="Eliminar archivo">×</button>
+                </div>
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+
+            <div class="card">
+                <div class="step-indicator">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Procesa y descarga</div>
+                </div>
+                <button class="btn-process npt" id="btnProcess" disabled>
+                    <span>⚡</span>
+                    <span>Transformar Archivo</span>
+                </button>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>Procesando archivo...</div>
+                </div>
+
+                <div class="results" id="results">
+                    <div class="results-header">
+                        <div class="success-icon">✓</div>
+                        <div>
+                            <div class="results-title">¡Transformación completada!</div>
+                            <div class="results-subtitle">Tu archivo está listo para descargar</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="statSheets">0</div>
+                            <div class="stat-label">Pestañas</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statRecords">0</div>
+                            <div class="stat-label">Registros</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statTime">0s</div>
+                            <div class="stat-label">Tiempo</div>
+                        </div>
+                    </div>
+                    <button class="btn-download" id="btnDownload">
+                        <span>📥</span>
+                        <span>Descargar Excel Transformado</span>
+                    </button>
+                    
+                    <div class="storage-status" id="storageStatus"></div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">Vista previa (primeros 10 registros)</div>
+                        <div class="preview-table" id="previewTable"></div>
+                    </div>
+                </div>
+            </div>
+
+            <footer>
+                Therapía IV © 2026 — Transformador de archivos Excel
+            </footer>
+        </div>
+
+        <!-- ========== ADMIN VIEW ========== -->
+        <div class="admin-view" id="adminView">
+            <!-- Login Form -->
+            <div class="login-section" id="loginSection">
+                <div class="card login-card">
+                    <div class="login-title">
+                        <h2>🔐 Panel de Administración</h2>
+                        <p>Ingresa tus credenciales</p>
+                    </div>
+                    <div class="login-error" id="loginError"></div>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="email">Correo electrónico</label>
+                            <input type="email" id="email" required placeholder="admin@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Contraseña</label>
+                            <input type="password" id="password" required placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn-login" id="btnLogin">Iniciar Sesión</button>
+                    </form>
+                    <br>
+                    <a href="#" class="back-link" id="backToPublic">← Volver al transformador</a>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div class="dashboard-section" id="dashboardSection" style="display: none;">
+                <a href="#" class="back-link" id="backToPublicDash">← Volver al transformador</a>
+                
+                <div class="card">
+                    <div class="admin-header">
+                        <h2>Panel de Administración</h2>
+                        <button class="btn-logout" id="btnLogout">Cerrar Sesión</button>
+                    </div>
+
+                    <div class="admin-tabs">
+                        <button class="admin-tab active" data-tab="archivos">📂 Historial de Archivos</button>
+                        <button class="admin-tab" data-tab="precios">💰 Tabla de Precios ONCO</button>
+                    </div>
+
+                    <!-- Tab: Archivos -->
+                    <div class="tab-content active" id="tabArchivos">
+                        <div class="files-grid" id="filesGrid">
+                        </div>
+                    </div>
+
+                    <!-- Tab: Precios -->
+                    <div class="tab-content" id="tabPrecios">
+                        <div class="precios-info">
+                            <h4>📋 Formato requerido del Excel</h4>
+                            <p>El archivo debe tener las siguientes columnas:</p>
+                            <p><code>Droga</code> | <code>Dosis</code> | <code>Suero</code> | <code>Vol.(ml)</code> | <code>Precio</code></p>
+                            <p style="margin-top: 8px;">Los nombres de columna deben coincidir exactamente.</p>
+                        </div>
+
+                        <div class="precios-message" id="preciosMessage"></div>
+
+                        <div class="precios-upload-zone" id="preciosUploadZone">
+                            <input type="file" id="preciosFileInput" accept=".xlsx,.xls">
+                            <div class="upload-icon">💰</div>
+                            <div class="upload-text">Subir tabla de precios ONCO</div>
+                            <div class="upload-hint">Reemplazará la tabla actual</div>
+                        </div>
+
+                        <div class="precios-stats" id="preciosStats" style="display: none;">
+                            <div class="precios-stat">
+                                <div class="precios-stat-value" id="preciosCount">0</div>
+                                <div class="precios-stat-label">Precios cargados</div>
+                            </div>
+                            <div class="precios-stat">
+                                <div class="precios-stat-value" id="drogasCount">0</div>
+                                <div class="precios-stat-label">Drogas únicas</div>
+                            </div>
+                            <div>
+                                <button class="btn-clear-precios" id="btnClearPrecios">🗑️ Borrar tabla</button>
+                            </div>
+                        </div>
+
+                        <div class="precios-table-container" id="preciosTableContainer" style="display: none;">
+                            <table class="precios-table" id="preciosTable">
+                                <thead>
+                                    <tr>
+                                        <th>Droga</th>
+                                        <th>Dosis</th>
+                                        <th>Suero</th>
+                                        <th>Vol.(ml)</th>
+                                        <th>Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preciosTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== CONFIGURACIÓN SUPABASE ==========
+        const SUPABASE_URL = 'https://hoguqmvgfjfmczvejxph.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvZ3VxbXZnZmpmbWN6dmVqeHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMjY1MzcsImV4cCI6MjA4NDcwMjUzN30.2eqOJo5rMS7LrbakWrRVmyJ9-Y2gfr42lBkJdRNPdN4';
+        
+        let supabaseClient = null;
+        if (SUPABASE_URL !== 'TU_SUPABASE_URL') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        // ========== ESTADO DE LA APLICACIÓN ==========
+        let uploadedFile = null;
+        let processedWorkbook = null;
+        let processedData = [];
+        let currentUser = null;
+        let processedFileBlob = null;
+        let processedFileName = '';
+        let preciosOnco = []; // Tabla de precios cargada desde Supabase
+
+        // ========== ELEMENTOS DEL DOM ==========
+        const publicView = document.getElementById('publicView');
+        const adminView = document.getElementById('adminView');
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const fileInput = document.getElementById('fileInput');
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileMeta = document.getElementById('fileMeta');
+        const btnRemove = document.getElementById('btnRemove');
+        const btnProcess = document.getElementById('btnProcess');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorMessage = document.getElementById('errorMessage');
+        const previewTable = document.getElementById('previewTable');
+        const storageStatus = document.getElementById('storageStatus');
+
+        // ========== INICIALIZACIÓN ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadPreciosOnco();
+            updatePriceStatusBadge();
+        });
+
+        // ========== EVENT LISTENERS ==========
+        fileInput.addEventListener('change', handleFileSelect);
+        btnRemove.addEventListener('click', removeFile);
+        btnProcess.addEventListener('click', processFile);
+        document.getElementById('btnDownload').addEventListener('click', downloadFile);
+        document.getElementById('adminToggle').addEventListener('click', showAdminView);
+        document.getElementById('backToPublic').addEventListener('click', showPublicView);
+        document.getElementById('backToPublicDash').addEventListener('click', showPublicView);
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        document.getElementById('btnLogout').addEventListener('click', handleLogout);
+        document.getElementById('preciosFileInput').addEventListener('change', handlePreciosUpload);
+        document.getElementById('btnClearPrecios').addEventListener('click', clearPrecios);
+
+        // Admin tabs
+        document.querySelectorAll('.admin-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab' + capitalize(tab.dataset.tab)).classList.add('active');
+            });
+        });
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        document.querySelectorAll('input[name="fileType"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                btnProcess.className = 'btn-process ' + e.target.value;
+                updatePriceStatusBadge();
+            });
+        });
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect({ target: fileInput });
+            }
+        });
+
+        // ========== PRECIOS ONCO ==========
+        async function loadPreciosOnco() {
+            if (!supabaseClient) return;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('precios_onco')
+                    .select('*')
+                    .order('droga', { ascending: true });
+
+                if (error) throw error;
+                preciosOnco = data || [];
+            } catch (error) {
+                console.error('Error cargando precios:', error);
+                preciosOnco = [];
+            }
+        }
+
+        function updatePriceStatusBadge() {
+            const fileType = document.querySelector('input[name="fileType"]:checked').value;
+            const container = document.getElementById('priceStatusPublic');
+            
+            if (fileType === 'onco') {
+                if (preciosOnco.length > 0) {
+                    container.innerHTML = `<div class="price-status-badge loaded">✓ ${preciosOnco.length} precios cargados</div>`;
+                } else {
+                    container.innerHTML = `<div class="price-status-badge empty">⚠ Sin tabla de precios</div>`;
+                }
+            } else {
+                container.innerHTML = '';
+            }
+        }
+
+        function buscarPrecio(droga, dosis, suero, volumen) {
+            if (!preciosOnco.length) return null;
+            
+            const drogaNorm = droga?.toString().toUpperCase().trim();
+            const dosisNum = parseFloat(dosis) || 0;
+            
+            // Buscar coincidencia exacta primero
+            let match = preciosOnco.find(p => 
+                p.droga?.toUpperCase().trim() === drogaNorm && 
+                parseFloat(p.dosis) === dosisNum
+            );
+            
+            if (match) return match.precio;
+            
+            // Buscar con tolerancia de ±10% en dosis
+            match = preciosOnco.find(p => {
+                if (p.droga?.toUpperCase().trim() !== drogaNorm) return false;
+                const pDosis = parseFloat(p.dosis);
+                return Math.abs(pDosis - dosisNum) / dosisNum <= 0.1;
+            });
+            
+            if (match) return match.precio;
+            
+            // Buscar solo por droga (primer precio disponible)
+            match = preciosOnco.find(p => p.droga?.toUpperCase().trim() === drogaNorm);
+            
+            return match ? match.precio : null;
+        }
+
+        async function handlePreciosUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const messageEl = document.getElementById('preciosMessage');
+            messageEl.className = 'precios-message';
+            messageEl.textContent = '';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+                if (!jsonData.length) {
+                    throw new Error('El archivo está vacío');
+                }
+
+                // Validar columnas
+                const requiredCols = ['Droga', 'Dosis', 'Precio'];
+                const firstRow = jsonData[0];
+                const missingCols = requiredCols.filter(col => !(col in firstRow));
+                
+                if (missingCols.length) {
+                    throw new Error(`Faltan columnas: ${missingCols.join(', ')}`);
+                }
+
+                // Limpiar tabla actual
+                const { error: deleteError } = await supabaseClient
+                    .from('precios_onco')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Truco para borrar todo
+
+                if (deleteError) throw deleteError;
+
+                // Insertar nuevos precios
+                const precios = jsonData.map(row => ({
+                    droga: row['Droga']?.toString() || '',
+                    dosis: parseFloat(row['Dosis']) || 0,
+                    suero: row['Suero']?.toString() || null,
+                    volumen: parseFloat(row['Vol.(ml)']) || null,
+                    precio: parseFloat(row['Precio']) || 0
+                })).filter(p => p.droga && p.precio);
+
+                const { error: insertError } = await supabaseClient
+                    .from('precios_onco')
+                    .insert(precios);
+
+                if (insertError) throw insertError;
+
+                // Recargar y mostrar
+                await loadPreciosOnco();
+                displayPreciosTable();
+                updatePriceStatusBadge();
+
+                messageEl.className = 'precios-message success';
+                messageEl.textContent = `✓ ${precios.length} precios cargados correctamente`;
+
+            } catch (error) {
+                messageEl.className = 'precios-message error';
+                messageEl.textContent = `Error: ${error.message}`;
+            }
+
+            e.target.value = '';
+        }
+
+        async function clearPrecios() {
+            if (!confirm('¿Estás seguro de borrar toda la tabla de precios?')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('precios_onco')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+
+                if (error) throw error;
+
+                preciosOnco = [];
+                displayPreciosTable();
+                updatePriceStatusBadge();
+
+                const messageEl = document.getElementById('preciosMessage');
+                messageEl.className = 'precios-message success';
+                messageEl.textContent = '✓ Tabla de precios borrada';
+
+            } catch (error) {
+                const messageEl = document.getElementById('preciosMessage');
+                messageEl.className = 'precios-message error';
+                messageEl.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function displayPreciosTable() {
+            const statsEl = document.getElementById('preciosStats');
+            const tableContainer = document.getElementById('preciosTableContainer');
+            const tbody = document.getElementById('preciosTableBody');
+
+            if (!preciosOnco.length) {
+                statsEl.style.display = 'none';
+                tableContainer.style.display = 'none';
+                return;
+            }
+
+            // Stats
+            const drogasUnicas = new Set(preciosOnco.map(p => p.droga?.toUpperCase())).size;
+            document.getElementById('preciosCount').textContent = preciosOnco.length;
+            document.getElementById('drogasCount').textContent = drogasUnicas;
+            statsEl.style.display = 'flex';
+
+            // Table
+            tbody.innerHTML = preciosOnco.map(p => `
+                <tr>
+                    <td>${p.droga || '-'}</td>
+                    <td>${p.dosis || '-'}</td>
+                    <td>${p.suero || '-'}</td>
+                    <td>${p.volumen || '-'}</td>
+                    <td>$${(p.precio || 0).toLocaleString()}</td>
+                </tr>
+            `).join('');
+            tableContainer.style.display = 'block';
+        }
+
+        // ========== FUNCIONES DE NAVEGACIÓN ==========
+        function showAdminView(e) {
+            e.preventDefault();
+            publicView.classList.add('hidden');
+            adminView.classList.add('visible');
+            checkAuthState();
+        }
+
+        function showPublicView(e) {
+            e.preventDefault();
+            adminView.classList.remove('visible');
+            publicView.classList.remove('hidden');
+            loadPreciosOnco().then(updatePriceStatusBadge);
+        }
+
+        async function checkAuthState() {
+            if (!supabaseClient) {
+                showLoginError('Supabase no está configurado. Revisa las credenciales.');
+                return;
+            }
+            
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                showDashboard();
+            } else {
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            loginSection.style.display = 'block';
+            dashboardSection.style.display = 'none';
+        }
+
+        function showDashboard() {
+            loginSection.style.display = 'none';
+            dashboardSection.style.display = 'block';
+            loadFiles();
+            loadPreciosOnco().then(displayPreciosTable);
+        }
+
+        // ========== FUNCIONES DE AUTENTICACIÓN ==========
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            if (!supabaseClient) {
+                showLoginError('Supabase no está configurado.');
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btnLogin = document.getElementById('btnLogin');
+
+            btnLogin.disabled = true;
+            btnLogin.textContent = 'Ingresando...';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                currentUser = data.user;
+                hideLoginError();
+                showDashboard();
+            } catch (error) {
+                showLoginError(error.message || 'Error al iniciar sesión');
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.textContent = 'Iniciar Sesión';
+            }
+        }
+
+        async function handleLogout() {
+            if (!supabaseClient) return;
+            
+            await supabaseClient.auth.signOut();
+            currentUser = null;
+            showLogin();
+        }
+
+        function showLoginError(msg) {
+            const loginError = document.getElementById('loginError');
+            loginError.textContent = msg;
+            loginError.classList.add('visible');
+        }
+
+        function hideLoginError() {
+            document.getElementById('loginError').classList.remove('visible');
+        }
+
+        // ========== FUNCIONES DE ARCHIVOS ==========
+        async function loadFiles() {
+            const filesGrid = document.getElementById('filesGrid');
+
+            if (!supabaseClient) {
+                filesGrid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Supabase no configurado</p></div>';
+                return;
+            }
+
+            filesGrid.innerHTML = '<div class="loading visible"><div class="spinner"></div><div>Cargando archivos...</div></div>';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('archivos_transformados')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    filesGrid.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No hay archivos transformados aún</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                filesGrid.innerHTML = data.map(file => `
+                    <div class="file-card">
+                        <div class="file-card-icon ${file.tipo}">
+                            ${file.tipo === 'npt' ? '💉' : '🧬'}
+                        </div>
+                        <div class="file-card-info">
+                            <div class="file-card-name">${file.nombre_archivo}</div>
+                            <div class="file-card-meta">
+                                <span class="badge ${file.tipo}">${file.tipo.toUpperCase()}</span>
+                                &nbsp;•&nbsp; ${file.registros} registros
+                            </div>
+                        </div>
+                        <div class="file-card-date">
+                            <strong>${formatDate(file.created_at)}</strong>
+                            ${formatTime(file.created_at)}
+                        </div>
+                        <button class="btn-download-small" onclick="downloadStoredFile('${file.storage_path}', '${file.nombre_archivo}')">
+                            📥 Descargar
+                        </button>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                filesGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Error al cargar archivos: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function downloadStoredFile(path, filename) {
+            if (!supabaseClient) return;
+
+            try {
+                const { data, error } = await supabaseClient.storage
+                    .from('archivos-transformados')
+                    .download(path);
+
+                if (error) throw error;
+
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Error al descargar: ' + error.message);
+            }
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function formatTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ========== FUNCIONES DEL TRANSFORMADOR ==========
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                showError('Por favor selecciona un archivo Excel (.xlsx o .xls)');
+                return;
+            }
+
+            uploadedFile = file;
+            fileName.textContent = file.name;
+            fileMeta.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+            fileInfo.classList.add('visible');
+            uploadZone.style.display = 'none';
+            btnProcess.disabled = false;
+            hideError();
+            results.classList.remove('visible');
+            storageStatus.className = 'storage-status';
+        }
+
+        function removeFile() {
+            uploadedFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('visible');
+            uploadZone.style.display = 'block';
+            btnProcess.disabled = true;
+            results.classList.remove('visible');
+            storageStatus.className = 'storage-status';
+        }
+
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorMessage.classList.add('visible');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('visible');
+        }
+
+        async function processFile() {
+            if (!uploadedFile) return;
+
+            const fileType = document.querySelector('input[name="fileType"]:checked').value;
+            const startTime = Date.now();
+
+            // Recargar precios antes de procesar ONCO
+            if (fileType === 'onco') {
+                await loadPreciosOnco();
+            }
+
+            loading.classList.add('visible');
+            results.classList.remove('visible');
+            hideError();
+            storageStatus.className = 'storage-status';
+
+            try {
+                const data = await uploadedFile.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                if (fileType === 'npt') {
+                    processedData = processNPT(workbook);
+                } else {
+                    processedData = processONCO(workbook);
+                }
+
+                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                
+                processedWorkbook = createOutputWorkbook(processedData, fileType);
+
+                const timestamp = new Date().toISOString().slice(0, 10);
+                processedFileName = fileType === 'npt' 
+                    ? `NPT_Transformado_${timestamp}.xlsx`
+                    : `ONCO_Transformado_${timestamp}.xlsx`;
+
+                const wbout = XLSX.write(processedWorkbook, { bookType: 'xlsx', type: 'array' });
+                processedFileBlob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                document.getElementById('statSheets').textContent = workbook.SheetNames.length;
+                document.getElementById('statRecords').textContent = processedData.length;
+                document.getElementById('statTime').textContent = elapsedTime + 's';
+
+                showPreview(processedData, fileType);
+
+                loading.classList.remove('visible');
+                results.classList.add('visible');
+
+                await saveToStorage(fileType);
+
+            } catch (error) {
+                console.error(error);
+                loading.classList.remove('visible');
+                showError('Error procesando el archivo: ' + error.message);
+            }
+        }
+
+        async function saveToStorage(fileType) {
+            if (!supabaseClient || !processedFileBlob) {
+                return;
+            }
+
+            try {
+                const timestamp = Date.now();
+                const storagePath = `${fileType}/${timestamp}_${processedFileName}`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('archivos-transformados')
+                    .upload(storagePath, processedFileBlob);
+
+                if (uploadError) throw uploadError;
+
+                const { error: dbError } = await supabaseClient
+                    .from('archivos_transformados')
+                    .insert({
+                        nombre_archivo: processedFileName,
+                        tipo: fileType,
+                        registros: processedData.length,
+                        storage_path: storagePath
+                    });
+
+                if (dbError) throw dbError;
+
+                storageStatus.textContent = '✓ Archivo guardado en el historial';
+                storageStatus.className = 'storage-status success';
+
+            } catch (error) {
+                console.error('Error guardando en storage:', error);
+                storageStatus.textContent = '⚠ Archivo procesado pero no se pudo guardar en historial';
+                storageStatus.className = 'storage-status error';
+            }
+        }
+
+        function processNPT(workbook) {
+            const records = [];
+            const ROW_NOMBRE = 5;
+            const ROW_SERVICIO = 6;
+            const ROW_RECETA = 13;
+            const ROW_VOLUMEN = 41;
+
+            for (const sheetName of workbook.SheetNames) {
+                const sheet = workbook.Sheets[sheetName];
+                const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+                
+                for (let col = 1; col <= range.e.c; col++) {
+                    const nombre = getCellValue(sheet, ROW_NOMBRE, col);
+                    const servicio = getCellValue(sheet, ROW_SERVICIO, col);
+                    const receta = getCellValue(sheet, ROW_RECETA, col);
+                    const volumen = getCellValue(sheet, ROW_VOLUMEN, col);
+
+                    if (nombre && typeof nombre === 'string' && nombre.trim() !== '' && nombre !== 'Nombre Paciente') {
+                        let recetaFinal = receta;
+                        if (receta && typeof receta === 'string' && receta.toUpperCase().includes('SUSPENDID')) {
+                            recetaFinal = 'SUSPENDIDA';
+                        }
+
+                        records.push({
+                            'Nombre Paciente': nombre.trim(),
+                            'Servicio': servicio ? servicio.toString().trim() : '',
+                            'Nº de receta': recetaFinal || '',
+                            'Volumen Total': volumen || '',
+                            '_fecha': sheetName
+                        });
+                    }
+                }
+            }
+
+            return records;
+        }
+
+        function processONCO(workbook) {
+            const records = [];
+            let contador = 1;
+
+            for (const sheetName of workbook.SheetNames) {
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                let headerRow = -1;
+                for (let i = 0; i < Math.min(jsonData.length, 15); i++) {
+                    const row = jsonData[i];
+                    if (row && row.some(cell => cell && cell.toString().toLowerCase().includes('nombre'))) {
+                        headerRow = i;
+                        break;
+                    }
+                }
+
+                if (headerRow === -1) continue;
+
+                for (let i = headerRow + 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || !row[1]) continue;
+
+                    const nombre = row[1];
+                    const receta = row[2];
+                    const rut = row[3];
+                    const ficha = row[4];
+                    const patologia = row[5];
+                    const ciclo = row[6];
+                    const droga = row[7];
+                    const dosis = row[8];
+                    const suero = row[9];
+                    const volumen = row[10];
+                    const numero = row[11];
+                    const servicio = row[12];
+                    const medico = row[13];
+
+                    if (!nombre || nombre === 'Nombre') continue;
+
+                    // Buscar precio en la tabla de Supabase
+                    const precio = buscarPrecio(droga, dosis, suero, volumen);
+
+                    records.push({
+                        '': contador++,
+                        'Nombre': nombre,
+                        'Receta': receta || '',
+                        'RUT': rut || '',
+                        'Ficha': ficha || '',
+                        'Patología': patologia || '',
+                        'Ciclo': ciclo || '',
+                        'Droga': droga || '',
+                        'Dosis(mg)': dosis || '',
+                        'Suero': suero || '',
+                        'Vol.(ml)': volumen || '',
+                        'Número': numero || '',
+                        'Servicio': servicio || '',
+                        'Medico': medico || '',
+                        'Observaciones': '',
+                        'Precios': precio || ''
+                    });
+                }
+            }
+
+            return records;
+        }
+
+        function getCellValue(sheet, row, col) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row - 1, c: col });
+            const cell = sheet[cellAddress];
+            return cell ? cell.v : null;
+        }
+
+        function createOutputWorkbook(data, fileType) {
+            const wb = XLSX.utils.book_new();
+
+            if (fileType === 'npt') {
+                const headers = ['Nombre Paciente', 'Servicio', 'Nº de receta', 'Volumen Total'];
+                const wsData = [headers];
+                data.forEach(row => {
+                    wsData.push([row['Nombre Paciente'], row['Servicio'], row['Nº de receta'], row['Volumen Total']]);
+                });
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                ws['!cols'] = [{ wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+                XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+            } else {
+                const headers = ['', 'Nombre', 'Receta', 'RUT', 'Ficha', 'Patología', 'Ciclo', 'Droga', 'Dosis(mg)', 'Suero', 'Vol.(ml)', 'Número', 'Servicio', 'Medico', 'Observaciones', 'Precios'];
+                const wsData = [headers];
+                data.forEach(row => {
+                    wsData.push([
+                        row[''], row['Nombre'], row['Receta'], row['RUT'], row['Ficha'],
+                        row['Patología'], row['Ciclo'], row['Droga'], row['Dosis(mg)'],
+                        row['Suero'], row['Vol.(ml)'], row['Número'], row['Servicio'],
+                        row['Medico'], row['Observaciones'], row['Precios']
+                    ]);
+                });
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                ws['!cols'] = [
+                    { wch: 5 }, { wch: 35 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+                    { wch: 25 }, { wch: 6 }, { wch: 15 }, { wch: 10 }, { wch: 6 },
+                    { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+            }
+
+            return wb;
+        }
+
+        function showPreview(data, fileType) {
+            if (data.length === 0) {
+                previewTable.innerHTML = '<p style="padding: 16px; color: var(--text-secondary);">No se encontraron registros</p>';
+                return;
+            }
+
+            const previewData = data.slice(0, 10);
+            let headers, rows;
+
+            if (fileType === 'npt') {
+                headers = ['Nombre Paciente', 'Servicio', 'Nº de receta', 'Volumen Total'];
+                rows = previewData.map(row => [
+                    row['Nombre Paciente'],
+                    row['Servicio'],
+                    row['Nº de receta'],
+                    row['Volumen Total']
+                ]);
+            } else {
+                headers = ['#', 'Nombre', 'Receta', 'Droga', 'Dosis', 'Servicio', 'Precio'];
+                rows = previewData.map(row => [
+                    row[''],
+                    row['Nombre'],
+                    row['Receta'],
+                    row['Droga'],
+                    row['Dosis(mg)'],
+                    row['Servicio'],
+                    row['Precios'] ? '$' + row['Precios'].toLocaleString() : '-'
+                ]);
+            }
+
+            let html = '<table><thead><tr>';
+            headers.forEach(h => html += `<th>${h}</th>`);
+            html += '</tr></thead><tbody>';
+            rows.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => html += `<td>${cell || '-'}</td>`);
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+
+            previewTable.innerHTML = html;
+        }
+
+        function downloadFile() {
+            if (!processedWorkbook) return;
+            XLSX.writeFile(processedWorkbook, processedFileName);
+        }
+
+        window.downloadStoredFile = downloadStoredFile;
+    </script>
+</body>
+</html>
