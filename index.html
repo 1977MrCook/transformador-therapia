@@ -954,6 +954,11 @@
             color: var(--accent-onco);
         }
 
+        .price-not-found {
+            color: var(--danger);
+            font-size: 0.8rem;
+        }
+
         @media (max-width: 640px) {
             .type-selector {
                 grid-template-columns: 1fr;
@@ -1152,9 +1157,9 @@
                     <div class="tab-content" id="tabPrecios">
                         <div class="precios-info">
                             <h4>📋 Formato requerido del Excel</h4>
-                            <p>El archivo debe tener las siguientes columnas:</p>
-                            <p><code>Droga</code> | <code>Dosis</code> | <code>Suero</code> | <code>Vol.(ml)</code> | <code>Precio</code></p>
-                            <p style="margin-top: 8px;">Los nombres de columna deben coincidir exactamente.</p>
+                            <p>El archivo debe tener las siguientes columnas (en el mismo orden):</p>
+                            <p><code>DOSIS</code> | <code>RANGO_DESDE</code> | <code>RANGO_HASTA</code> | <code>DEMANDA_ESTIMADA_ANUAL</code> | <code>VALOR_UNITARIO_POR_RANGO_OFERTADO</code> | <code>COSTO_MENSUAL_POR_RANGO</code> | <code>PAGINA_ORIGEN</code></p>
+                            <p style="margin-top: 8px;"><strong>Nota:</strong> La columna DOSIS contiene el nombre del medicamento. El precio se asigna cuando la dosis del preparado está entre RANGO_DESDE y RANGO_HASTA.</p>
                         </div>
 
                         <div class="precios-message" id="preciosMessage"></div>
@@ -1169,11 +1174,11 @@
                         <div class="precios-stats" id="preciosStats" style="display: none;">
                             <div class="precios-stat">
                                 <div class="precios-stat-value" id="preciosCount">0</div>
-                                <div class="precios-stat-label">Precios cargados</div>
+                                <div class="precios-stat-label">Rangos cargados</div>
                             </div>
                             <div class="precios-stat">
                                 <div class="precios-stat-value" id="drogasCount">0</div>
-                                <div class="precios-stat-label">Drogas únicas</div>
+                                <div class="precios-stat-label">Medicamentos únicos</div>
                             </div>
                             <div>
                                 <button class="btn-clear-precios" id="btnClearPrecios">🗑️ Borrar tabla</button>
@@ -1184,11 +1189,10 @@
                             <table class="precios-table" id="preciosTable">
                                 <thead>
                                     <tr>
-                                        <th>Droga</th>
-                                        <th>Dosis</th>
-                                        <th>Suero</th>
-                                        <th>Vol.(ml)</th>
-                                        <th>Precio</th>
+                                        <th>Medicamento</th>
+                                        <th>Rango Desde</th>
+                                        <th>Rango Hasta</th>
+                                        <th>Valor Unitario</th>
                                     </tr>
                                 </thead>
                                 <tbody id="preciosTableBody"></tbody>
@@ -1217,7 +1221,7 @@
         let currentUser = null;
         let processedFileBlob = null;
         let processedFileName = '';
-        let preciosOnco = []; // Tabla de precios cargada desde Supabase
+        let preciosOnco = []; // Tabla de precios con rangos cargada desde Supabase
 
         // ========== ELEMENTOS DEL DOM ==========
         const publicView = document.getElementById('publicView');
@@ -1294,7 +1298,7 @@
             }
         });
 
-        // ========== PRECIOS ONCO ==========
+        // ========== PRECIOS ONCO CON RANGOS ==========
         async function loadPreciosOnco() {
             if (!supabaseClient) return;
 
@@ -1302,10 +1306,11 @@
                 const { data, error } = await supabaseClient
                     .from('precios_onco')
                     .select('*')
-                    .order('droga', { ascending: true });
+                    .order('dosis', { ascending: true });
 
                 if (error) throw error;
                 preciosOnco = data || [];
+                console.log('Precios cargados:', preciosOnco.length);
             } catch (error) {
                 console.error('Error cargando precios:', error);
                 preciosOnco = [];
@@ -1318,7 +1323,8 @@
             
             if (fileType === 'onco') {
                 if (preciosOnco.length > 0) {
-                    container.innerHTML = `<div class="price-status-badge loaded">✓ ${preciosOnco.length} precios cargados</div>`;
+                    const medicamentosUnicos = new Set(preciosOnco.map(p => p.dosis?.toUpperCase())).size;
+                    container.innerHTML = `<div class="price-status-badge loaded">✓ ${preciosOnco.length} rangos de ${medicamentosUnicos} medicamentos cargados</div>`;
                 } else {
                     container.innerHTML = `<div class="price-status-badge empty">⚠ Sin tabla de precios</div>`;
                 }
@@ -1327,33 +1333,31 @@
             }
         }
 
-        function buscarPrecio(droga, dosis, suero, volumen) {
-            if (!preciosOnco.length) return null;
+        // Buscar precio por rango: medicamento + dosis dentro del rango
+        // Usa la parte entera de la dosis para buscar en rangos de números enteros
+        function buscarPrecioPorRango(medicamento, dosisValue) {
+            if (!preciosOnco.length || !medicamento) return null;
             
-            const drogaNorm = droga?.toString().toUpperCase().trim();
-            const dosisNum = parseFloat(dosis) || 0;
+            const medicamentoNorm = medicamento.toString().toUpperCase().trim();
+            // Convertir dosis a número y usar solo la parte entera
+            const dosisNum = Math.floor(parseFloat(String(dosisValue).replace(',', '.')) || 0);
             
-            // Buscar coincidencia exacta primero
-            let match = preciosOnco.find(p => 
-                p.droga?.toUpperCase().trim() === drogaNorm && 
-                parseFloat(p.dosis) === dosisNum
-            );
-            
-            if (match) return match.precio;
-            
-            // Buscar con tolerancia de ±10% en dosis
-            match = preciosOnco.find(p => {
-                if (p.droga?.toUpperCase().trim() !== drogaNorm) return false;
-                const pDosis = parseFloat(p.dosis);
-                return Math.abs(pDosis - dosisNum) / dosisNum <= 0.1;
+            // Buscar donde el medicamento coincida y la dosis esté dentro del rango
+            const match = preciosOnco.find(p => {
+                const pMedicamento = p.dosis?.toString().toUpperCase().trim();
+                const rangoDesde = Math.floor(parseFloat(p.rango_desde) || 0);
+                const rangoHasta = Math.floor(parseFloat(p.rango_hasta) || Infinity);
+                
+                return pMedicamento === medicamentoNorm && 
+                       dosisNum >= rangoDesde && 
+                       dosisNum <= rangoHasta;
             });
             
-            if (match) return match.precio;
+            if (match) {
+                return match.valor_unitario;
+            }
             
-            // Buscar solo por droga (primer precio disponible)
-            match = preciosOnco.find(p => p.droga?.toUpperCase().trim() === drogaNorm);
-            
-            return match ? match.precio : null;
+            return null; // No encontrado
         }
 
         async function handlePreciosUpload(e) {
@@ -1374,31 +1378,48 @@
                     throw new Error('El archivo está vacío');
                 }
 
-                // Validar columnas
-                const requiredCols = ['Droga', 'Dosis', 'Precio'];
+                console.log('Primera fila:', jsonData[0]);
+
+                // Detectar nombres de columnas (pueden variar)
                 const firstRow = jsonData[0];
-                const missingCols = requiredCols.filter(col => !(col in firstRow));
+                const keys = Object.keys(firstRow);
                 
-                if (missingCols.length) {
-                    throw new Error(`Faltan columnas: ${missingCols.join(', ')}`);
+                // Buscar columnas por nombre parcial
+                const findCol = (searchTerms) => {
+                    return keys.find(k => searchTerms.some(term => k.toUpperCase().includes(term)));
+                };
+
+                const colDosis = findCol(['DOSIS', 'MEDICAMENTO', 'DROGA']);
+                const colRangoDesde = findCol(['RANGO_DESDE', 'DESDE', 'MIN']);
+                const colRangoHasta = findCol(['RANGO_HASTA', 'HASTA', 'MAX']);
+                const colValor = findCol(['VALOR_UNITARIO', 'PRECIO', 'VALOR']);
+
+                if (!colDosis || !colRangoDesde || !colRangoHasta || !colValor) {
+                    throw new Error(`Columnas faltantes. Encontradas: ${keys.join(', ')}`);
                 }
 
                 // Limpiar tabla actual
                 const { error: deleteError } = await supabaseClient
                     .from('precios_onco')
                     .delete()
-                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Truco para borrar todo
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
 
                 if (deleteError) throw deleteError;
 
-                // Insertar nuevos precios
+                // Preparar datos para insertar
                 const precios = jsonData.map(row => ({
-                    droga: row['Droga']?.toString() || '',
-                    dosis: parseFloat(row['Dosis']) || 0,
-                    suero: row['Suero']?.toString() || null,
-                    volumen: parseFloat(row['Vol.(ml)']) || null,
-                    precio: parseFloat(row['Precio']) || 0
-                })).filter(p => p.droga && p.precio);
+                    dosis: row[colDosis]?.toString() || '',
+                    rango_desde: parseFloat(row[colRangoDesde]) || 0,
+                    rango_hasta: parseFloat(row[colRangoHasta]) || 0,
+                    demanda_estimada_anual: parseFloat(row[findCol(['DEMANDA'])]) || null,
+                    valor_unitario: parseFloat(row[colValor]) || 0,
+                    costo_mensual: parseFloat(row[findCol(['COSTO_MENSUAL', 'COSTO'])]) || null,
+                    pagina_origen: parseInt(row[findCol(['PAGINA'])]) || null
+                })).filter(p => p.dosis && p.valor_unitario);
+
+                if (!precios.length) {
+                    throw new Error('No se encontraron registros válidos');
+                }
 
                 const { error: insertError } = await supabaseClient
                     .from('precios_onco')
@@ -1412,9 +1433,10 @@
                 updatePriceStatusBadge();
 
                 messageEl.className = 'precios-message success';
-                messageEl.textContent = `✓ ${precios.length} precios cargados correctamente`;
+                messageEl.textContent = `✓ ${precios.length} rangos de precios cargados correctamente`;
 
             } catch (error) {
+                console.error('Error:', error);
                 messageEl.className = 'precios-message error';
                 messageEl.textContent = `Error: ${error.message}`;
             }
@@ -1460,19 +1482,18 @@
             }
 
             // Stats
-            const drogasUnicas = new Set(preciosOnco.map(p => p.droga?.toUpperCase())).size;
+            const medicamentosUnicos = new Set(preciosOnco.map(p => p.dosis?.toUpperCase())).size;
             document.getElementById('preciosCount').textContent = preciosOnco.length;
-            document.getElementById('drogasCount').textContent = drogasUnicas;
+            document.getElementById('drogasCount').textContent = medicamentosUnicos;
             statsEl.style.display = 'flex';
 
             // Table
             tbody.innerHTML = preciosOnco.map(p => `
                 <tr>
-                    <td>${p.droga || '-'}</td>
                     <td>${p.dosis || '-'}</td>
-                    <td>${p.suero || '-'}</td>
-                    <td>${p.volumen || '-'}</td>
-                    <td>$${(p.precio || 0).toLocaleString()}</td>
+                    <td>${p.rango_desde || '-'}</td>
+                    <td>${p.rango_hasta || '-'}</td>
+                    <td>$${(p.valor_unitario || 0).toLocaleString('es-CL')}</td>
                 </tr>
             `).join('');
             tableContainer.style.display = 'block';
@@ -1863,8 +1884,8 @@
                     const ficha = row[4];
                     const patologia = row[5];
                     const ciclo = row[6];
-                    const droga = row[7];
-                    const dosis = row[8];
+                    const droga = row[7];  // Nombre del medicamento (ej: BLEOMICINA)
+                    const dosis = row[8];  // Valor de dosis (ej: 4)
                     const suero = row[9];
                     const volumen = row[10];
                     const numero = row[11];
@@ -1873,8 +1894,9 @@
 
                     if (!nombre || nombre === 'Nombre') continue;
 
-                    // Buscar precio en la tabla de Supabase
-                    const precio = buscarPrecio(droga, dosis, suero, volumen);
+                    // Buscar precio por rango: medicamento + dosis dentro del rango
+                    const precio = buscarPrecioPorRango(droga, dosis);
+                    const precioFinal = precio !== null ? precio : 'Rango o medicamento no encontrado';
 
                     records.push({
                         '': contador++,
@@ -1892,7 +1914,7 @@
                         'Servicio': servicio || '',
                         'Medico': medico || '',
                         'Observaciones': '',
-                        'Precios': precio || ''
+                        'Precios': precioFinal
                     });
                 }
             }
@@ -1933,7 +1955,7 @@
                 ws['!cols'] = [
                     { wch: 5 }, { wch: 35 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
                     { wch: 25 }, { wch: 6 }, { wch: 15 }, { wch: 10 }, { wch: 6 },
-                    { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }
+                    { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 25 }
                 ];
                 XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
             }
@@ -1959,16 +1981,21 @@
                     row['Volumen Total']
                 ]);
             } else {
-                headers = ['#', 'Nombre', 'Receta', 'Droga', 'Dosis', 'Servicio', 'Precio'];
-                rows = previewData.map(row => [
-                    row[''],
-                    row['Nombre'],
-                    row['Receta'],
-                    row['Droga'],
-                    row['Dosis(mg)'],
-                    row['Servicio'],
-                    row['Precios'] ? '$' + row['Precios'].toLocaleString() : '-'
-                ]);
+                headers = ['#', 'Nombre', 'Droga', 'Dosis', 'Servicio', 'Precio'];
+                rows = previewData.map(row => {
+                    const precio = row['Precios'];
+                    const precioDisplay = typeof precio === 'number' 
+                        ? '$' + precio.toLocaleString('es-CL') 
+                        : `<span class="price-not-found">${precio}</span>`;
+                    return [
+                        row[''],
+                        row['Nombre'],
+                        row['Droga'],
+                        row['Dosis(mg)'],
+                        row['Servicio'],
+                        precioDisplay
+                    ];
+                });
             }
 
             let html = '<table><thead><tr>';
