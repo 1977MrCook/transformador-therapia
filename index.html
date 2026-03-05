@@ -1818,6 +1818,18 @@
             }
         }
 
+        // Convertir nombre de pestaña (ddmmyyyy) a formato dd-mm-yyyy
+        function formatearFecha(sheetName) {
+            // Si tiene 8 caracteres numéricos (ddmmyyyy)
+            if (/^\d{8}$/.test(sheetName)) {
+                const dd = sheetName.substring(0, 2);
+                const mm = sheetName.substring(2, 4);
+                const yyyy = sheetName.substring(4, 8);
+                return `${dd}-${mm}-${yyyy}`;
+            }
+            return sheetName; // Si no coincide, devolver como está
+        }
+
         function processNPT(workbook) {
             const records = [];
             const ROW_NOMBRE = 5;
@@ -1846,7 +1858,7 @@
                             'Servicio': servicio ? servicio.toString().trim() : '',
                             'Nº de receta': recetaFinal || '',
                             'Volumen Total': volumen || '',
-                            '_fecha': sheetName
+                            '_fecha': formatearFecha(sheetName)
                         });
                     }
                 }
@@ -1900,6 +1912,7 @@
 
                     records.push({
                         '': contador++,
+                        '_fecha': formatearFecha(sheetName),
                         'Nombre': nombre,
                         'Receta': receta || '',
                         'RUT': rut || '',
@@ -1932,20 +1945,20 @@
             const wb = XLSX.utils.book_new();
 
             if (fileType === 'npt') {
-                const headers = ['Nombre Paciente', 'Servicio', 'Nº de receta', 'Volumen Total'];
+                const headers = ['Fecha', 'Nombre Paciente', 'Servicio', 'Nº de receta', 'Volumen Total'];
                 const wsData = [headers];
                 data.forEach(row => {
-                    wsData.push([row['Nombre Paciente'], row['Servicio'], row['Nº de receta'], row['Volumen Total']]);
+                    wsData.push([row['_fecha'], row['Nombre Paciente'], row['Servicio'], row['Nº de receta'], row['Volumen Total']]);
                 });
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
-                ws['!cols'] = [{ wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+                ws['!cols'] = [{ wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
                 XLSX.utils.book_append_sheet(wb, ws, 'Datos');
             } else {
-                const headers = ['', 'Nombre', 'Receta', 'RUT', 'Ficha', 'Patología', 'Ciclo', 'Droga', 'Dosis(mg)', 'Suero', 'Vol.(ml)', 'Número', 'Servicio', 'Medico', 'Observaciones', 'Precios'];
+                const headers = ['', 'Fecha', 'Nombre', 'Receta', 'RUT', 'Ficha', 'Patología', 'Ciclo', 'Droga', 'Dosis(mg)', 'Suero', 'Vol.(ml)', 'Número', 'Servicio', 'Medico', 'Observaciones', 'Precios'];
                 const wsData = [headers];
                 data.forEach(row => {
                     wsData.push([
-                        row[''], row['Nombre'], row['Receta'], row['RUT'], row['Ficha'],
+                        row[''], row['_fecha'], row['Nombre'], row['Receta'], row['RUT'], row['Ficha'],
                         row['Patología'], row['Ciclo'], row['Droga'], row['Dosis(mg)'],
                         row['Suero'], row['Vol.(ml)'], row['Número'], row['Servicio'],
                         row['Medico'], row['Observaciones'], row['Precios']
@@ -1953,7 +1966,7 @@
                 });
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
                 ws['!cols'] = [
-                    { wch: 5 }, { wch: 35 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+                    { wch: 5 }, { wch: 12 }, { wch: 35 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
                     { wch: 25 }, { wch: 6 }, { wch: 15 }, { wch: 10 }, { wch: 6 },
                     { wch: 8 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 25 }
                 ];
@@ -1973,15 +1986,16 @@
             let headers, rows;
 
             if (fileType === 'npt') {
-                headers = ['Nombre Paciente', 'Servicio', 'Nº de receta', 'Volumen Total'];
+                headers = ['Fecha', 'Nombre Paciente', 'Servicio', 'Nº de receta', 'Volumen Total'];
                 rows = previewData.map(row => [
+                    row['_fecha'],
                     row['Nombre Paciente'],
                     row['Servicio'],
                     row['Nº de receta'],
                     row['Volumen Total']
                 ]);
             } else {
-                headers = ['#', 'Nombre', 'Droga', 'Dosis', 'Servicio', 'Precio'];
+                headers = ['#', 'Fecha', 'Nombre', 'Droga', 'Dosis', 'Precio'];
                 rows = previewData.map(row => {
                     const precio = row['Precios'];
                     const precioDisplay = typeof precio === 'number' 
@@ -1989,10 +2003,10 @@
                         : `<span class="price-not-found">${precio}</span>`;
                     return [
                         row[''],
+                        row['_fecha'],
                         row['Nombre'],
                         row['Droga'],
                         row['Dosis(mg)'],
-                        row['Servicio'],
                         precioDisplay
                     ];
                 });
