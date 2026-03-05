@@ -1748,8 +1748,14 @@
 
                 if (fileType === 'npt') {
                     processedData = processNPT(workbook);
+                    processedData = ordenarPorFecha(processedData);
                 } else {
                     processedData = processONCO(workbook);
+                    processedData = ordenarPorFecha(processedData);
+                    // Re-numerar después de ordenar
+                    processedData.forEach((row, index) => {
+                        row[''] = index + 1;
+                    });
                 }
 
                 const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -1933,6 +1939,25 @@
             }
 
             return records;
+        }
+
+        // Ordenar registros por fecha (dd-mm-yyyy)
+        function ordenarPorFecha(records) {
+            return records.sort((a, b) => {
+                const fechaA = a['_fecha'] || '';
+                const fechaB = b['_fecha'] || '';
+                
+                // Convertir dd-mm-yyyy a yyyy-mm-dd para ordenar correctamente
+                const partsA = fechaA.split('-');
+                const partsB = fechaB.split('-');
+                
+                if (partsA.length === 3 && partsB.length === 3) {
+                    const dateA = `${partsA[2]}-${partsA[1]}-${partsA[0]}`;
+                    const dateB = `${partsB[2]}-${partsB[1]}-${partsB[0]}`;
+                    return dateA.localeCompare(dateB);
+                }
+                return fechaA.localeCompare(fechaB);
+            });
         }
 
         function getCellValue(sheet, row, col) {
